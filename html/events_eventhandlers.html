@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF Gate — Code Required</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #0f172a; color: #e2e8f0; }
+    .card { background: #111827; border: 1px solid #1f2937; }
+    .form-control, .form-select { background: #0b1220; color: #e2e8f0; border-color: #233047; }
+    .form-control:focus, .form-select:focus { box-shadow: 0 0 0 .2rem rgba(59,130,246,.25); border-color: #3b82f6; }
+    .shake { animation: shake 0.3s linear 1; }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+      100% { transform: translateX(0); }
+    }
+    .pdf-wrap { display: none; }
+    iframe {
+      width: 100%; height: 80vh; border: none; border-radius: .5rem; background: #0b1220;
+    }
+    .badge-muted { background: #1f2937; color: #cbd5e1; }
+    .footer { color: #94a3b8; }
+    a, a:visited { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="d-flex align-items-center mb-3">
+          <h1 class="h3 me-3">📄 PDF Gate</h1>
+          <span class="badge rounded-pill badge-muted">Enter a valid code to view the PDF</span>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-body">
+            <form id="gateForm" class="row g-3 gy-2 align-items-end" autocomplete="off">
+              <div class="col-md-6">
+                <label for="codeInput" class="form-label">Access code</label>
+                <input type="text" class="form-control" id="codeInput" placeholder="e.g., RN-101 or EVENTS-1" spellcheck="false">
+                <div class="form-text text-secondary">Code is not case-sensitive.</div>
+              </div>
+              <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100" id="openBtn">Open PDF</button>
+              </div>
+              <div class="col-md-3">
+                <button type="button" class="btn btn-outline-light w-100" id="resetBtn">Reset</button>
+              </div>
+
+              <div class="col-12">
+                <details class="text-secondary">
+                  <!-- <summary class="text-light">Instructor tips</summary>
+                  <ul class="mt-2">
+                    <li>Edit <code>CODE_MAP</code> in this file to map codes → PDF URLs.</li>
+                    <li>Optional: add <code>?code=YOUR-CODE</code> to the page URL to prefill the code.</li>
+                    <li>This is a classroom convenience, not a secure content protection method.</li>
+                  </ul> -->
+                </details>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="pdf-wrap" id="pdfWrap">
+          <div class="card mb-3">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <div class="small text-secondary">Now viewing</div>
+                <div class="h5 mb-0" id="pdfTitle">—</div>
+                <div class="small text-secondary" id="pdfUrl">—</div>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-info btn-sm" id="copyLinkBtn" title="Copy a link with this code embedded">Copy link</button>
+                <button class="btn btn-outline-warning btn-sm" id="hideBtn">Hide PDF</button>
+              </div>
+            </div>
+          </div>
+          <!-- <iframe id="pdfFrame" title="Slide PDF"></iframe> -->
+        </div>
+
+        <!-- <p class="mt-4 footer">Note: Client-side gating is intended for engagement, not for strong security. For stronger access control, store files behind authenticated services (e.g., Canvas files with availability dates or module requirements).</p> -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== EDIT THESE MAPPINGS ======
+    // Map codes (case-insensitive) to { url, title }.
+    // Replace example URLs with your Canvas or GitHub raw PDF links.
+    const CODE_MAP = {
+      "ONPRESS_BUTTON": { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_21_onPress_Button.pdf", title: "onPress_Button" },
+      "TOUCHABLEOPACITY": { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_22_onPress_TouchableOpacity.pdf", title: "onPress_TouchableOpacity" },
+      "PRESSABLE":   { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_23_onPress_Pressable.pdf",  title: "onPress_Pressable" },
+      "ONFOCUS_ONBLUR":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_24_Textinput_onChangeText_onFocus_onBlur.pdf",     title: "Textinput_onChangeText_onFocus_onBlur" },
+      "ONSUBMITEDITING":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_25_Textinput_onSubmitEditing.pdf",     title: "Textinput_onSubmitEditing" },
+      "GESTUREEVENTS":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_26_GestureEvents_onPressIn_onPressOut_onLongPress.pdf",     title: "GestureEvents_onPressIn_onPressOut_onLongPress" },
+      "SCROLLVIEW":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_27_ScrollView.pdf",     title: "ScrollView" },
+      "PASSING":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_28_PassingArgumentsinEventHandlers.pdf",     title: "PassingArgumentsinEventHandlers" },
+      "PREVENT":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_29_PreventMultipleRapidPresses.pdf",     title: "PreventMultipleRapidPresses" },
+      "USEEFFECT":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_30_useEffectTriggeredAfterEventChangesState.pdf",     title: "useEffectTriggeredAfterEventChangesState" },
+      "KEYBOARD":  { url: "https://cdn.jsdelivr.net/gh/aaldacog/web@main/pdf/07_1_31_HandlingInput_KeyboardOverlap.pdf",     title: "HandlingInput_KeyboardOverlap" }
+    };
+    // =================================
+
+    const el = (id) => document.getElementById(id);
+    const gateForm = el("gateForm");
+    const codeInput = el("codeInput");
+    const pdfWrap = el("pdfWrap");
+    // const pdfFrame = el("pdfFrame");
+    const pdfTitle = el("pdfTitle");
+    const pdfUrl = el("pdfUrl");
+    const openBtn = el("openBtn");
+    const resetBtn = el("resetBtn");
+    const copyLinkBtn = el("copyLinkBtn");
+    const hideBtn = el("hideBtn");
+
+    function normalize(s) { return (s || "").trim().toUpperCase(); }
+
+    function showErrorShake() {
+      gateForm.classList.remove("shake");
+      void gateForm.offsetWidth;
+      gateForm.classList.add("shake");
+    }
+
+    function loadPdfForCode(codeRaw) {
+      const code = normalize(codeRaw);
+      const item = CODE_MAP[code];
+      if (!item) {
+        showErrorShake();
+        codeInput.classList.add("is-invalid");
+        setTimeout(() => codeInput.classList.remove("is-invalid"), 600);
+        return false;
+      }
+      // const urlWithParams = item.url.includes("#") ? item.url : item.url + "#toolbar=1&navpanes=0&scrollbar=1";
+      // pdfFrame.src = urlWithParams;
+      // pdfTitle.textContent = item.title || "Untitled Topic";
+      // pdfUrl.textContent = item.url;
+      // pdfWrap.style.display = "block";
+        // Open in new tab instead of iframe
+      console.log("Opening PDF:", item.url); // Add this line
+      window.open(item.url, '_blank');
+      pdfTitle.textContent = item.title || "Untitled Topic";
+      pdfUrl.textContent = item.url;
+      pdfWrap.style.display = "block";
+      return true;
+    }
+
+    function copyLinkWithCode(codeRaw) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("code", normalize(codeRaw));
+      navigator.clipboard.writeText(url.toString())
+        .then(() => { copyLinkBtn.textContent = "Copied!"; setTimeout(() => copyLinkBtn.textContent = "Copy link", 1200); })
+        .catch(() => alert("Could not copy link."));
+    }
+
+    // Prefill from ?code= param
+    (function prefillFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const preset = params.get("code");
+      if (preset) {
+        codeInput.value = preset;
+        loadPdfForCode(preset);
+      }
+    })();
+
+    gateForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const value = codeInput.value;
+      if (!value) { showErrorShake(); return; }
+      loadPdfForCode(value);
+    });
+
+    resetBtn.addEventListener("click", () => {
+      codeInput.value = "";
+      // pdfFrame.src = "";
+      pdfWrap.style.display = "none";
+      codeInput.focus();
+    });
+
+    copyLinkBtn.addEventListener("click", () => {
+      if (!codeInput.value) return;
+      copyLinkWithCode(codeInput.value);
+    });
+
+    hideBtn.addEventListener("click", () => {
+      // pdfFrame.src = "";
+      pdfWrap.style.display = "none";
+    });
+
+    // Convenience: Enter key focuses Open
+    codeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { openBtn.focus(); }
+    });
+  </script>
+</body>
+</html>
